@@ -24,8 +24,8 @@ namespace Wox.Plugin.Todoist
                    { "text", task }
                 };
             var content = new FormUrlEncodedContent(values);
-           
-            var request = client.PostAsync("https://api.todoist.com/sync/v8/quick/add", content);
+
+            var request = client.PostAsync("https://api.todoist.com/sync/v9/quick/add", content);
             return request.ContinueWith((taskRequest) =>
             {
                 try
