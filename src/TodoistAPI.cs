@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Net;
 using System.Net.Http;
+using System.Net.Http.Headers;
 using System.Threading.Tasks;
 
 namespace Wox.Plugin.Todoist
@@ -17,14 +18,12 @@ namespace Wox.Plugin.Todoist
 
         public Task<HttpStatusCode> CreateQuickTask(string api_key, string task)
         {
-            var values =
-                new Dictionary<string, string>
-                {
-                   { "token", api_key},
-                   { "text", task }
-                };
+            var values = new Dictionary<string, string>
+                            {
+                               { "text", task }
+                            };
             var content = new FormUrlEncodedContent(values);
-
+            client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", api_key);
             var request = client.PostAsync("https://api.todoist.com/sync/v9/quick/add", content);
             return request.ContinueWith((taskRequest) =>
             {
