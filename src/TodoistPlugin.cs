@@ -1,6 +1,4 @@
 ﻿using Flow.Launcher.Plugin;
-using System;
-using System.Collections;
 using System.Collections.Generic;
 using System.Net;
 using System.Threading;
@@ -21,7 +19,7 @@ namespace Wox.Plugin.Todoist
         private static readonly int FAILED_TASK_RESULT_SCORE = 1;
         private static readonly int VALID_RESULT_SCORE = 1000000;
 
-        internal PluginInitContext context;
+        private PluginInitContext context;
 
         private Settings settings;
 
@@ -32,15 +30,13 @@ namespace Wox.Plugin.Todoist
 
         public Control CreateSettingPanel()
         {
-           settingsControl = new SettingsControl(configuration, this);
+            settingsControl = new SettingsControl(configuration, this);
             return settingsControl;
         }
 
       
         public void Init(PluginInitContext context)
         {
-            var path = context.CurrentPluginMetadata.PluginDirectory;
-            
             this.context = context;
 
             settings = context.API.LoadSettingJsonStorage<Settings>();
@@ -56,7 +52,7 @@ namespace Wox.Plugin.Todoist
 
             if (api_key.Trim().Length != 0)
             {
-                results.Add(GetResultValid(api_key,task, query));
+                results.Add(GetResultValid(api_key,task, query.ActionKeyword));
 
                 if (configuration.FailedRequests.Count != 0)
                     results.Add(getResultTasksFailed(query));
@@ -69,7 +65,7 @@ namespace Wox.Plugin.Todoist
             }
         }
 
-        public Result GetResultValid(string api_key, string task, Query query)
+        public Result GetResultValid(string api_key, string task, string actionKeyword)
         {
             return new Result
             {
@@ -92,7 +88,7 @@ namespace Wox.Plugin.Todoist
                         switch (responseStatus)
                         {
                             case HttpStatusCode.OK:
-                                context.API.ChangeQuery(string.IsNullOrEmpty(query.ActionKeyword) ? string.Empty : $"{query.ActionKeyword} ");
+                                context.API.ChangeQuery(string.IsNullOrEmpty(actionKeyword) ? string.Empty : $"{actionKeyword} ");
                                 context.API.ShowMsg("Success", $"Task {task} added", context.CurrentPluginMetadata.IcoPath);
                                 break;
                             
@@ -101,7 +97,7 @@ namespace Wox.Plugin.Todoist
                                 configuration.SetLastFailedHttpCode(responseStatus);
                                 configuration.AddFailedRequest(task);
                                 UpdateSettingsControl();
-                                context.API.ChangeQuery(string.IsNullOrEmpty(query.ActionKeyword) ? string.Empty : $"{query.ActionKeyword} ", true);
+                                context.API.ChangeQuery(string.IsNullOrEmpty(actionKeyword) ? string.Empty : $"{actionKeyword} ", true);
                                 break;
                         }
                     });
