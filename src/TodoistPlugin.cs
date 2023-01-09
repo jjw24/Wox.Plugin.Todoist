@@ -1,6 +1,4 @@
 ﻿using Flow.Launcher.Plugin;
-using System;
-using System.Collections;
 using System.Collections.Generic;
 using System.Net;
 using System.Threading;
@@ -23,6 +21,8 @@ namespace Wox.Plugin.Todoist
 
         private PluginInitContext context;
 
+        private Settings settings;
+
         public TodoistPlugin()
         {
             ServicePointManager.SecurityProtocol = SecurityProtocolType.Tls13;
@@ -30,17 +30,18 @@ namespace Wox.Plugin.Todoist
 
         public Control CreateSettingPanel()
         {
-           settingsControl = new SettingsControl(configuration, this);
+            settingsControl = new SettingsControl(configuration, this);
             return settingsControl;
         }
 
       
         public void Init(PluginInitContext context)
         {
-            var path = context.CurrentPluginMetadata.PluginDirectory;
-            configuration = new WoxSettingsStorage(path);
-            
             this.context = context;
+
+            settings = context.API.LoadSettingJsonStorage<Settings>();
+
+            configuration = new WoxSettingsStorage(settings);
         }
 
         public List<Result> Query(Query query)
@@ -54,7 +55,7 @@ namespace Wox.Plugin.Todoist
                 results.Add(GetResultValid(api_key,task, query.ActionKeyword));
 
                 if (configuration.FailedRequests.Count != 0)
-                    results.Add(getResultTasksFailed());
+                    results.Add(getResultTasksFailed(query));
 
                 return results;
             }
@@ -63,7 +64,6 @@ namespace Wox.Plugin.Todoist
                 return new List<Result> { getResultMissingAPI() };
             }
         }
-
 
         public Result GetResultValid(string api_key, string task, string actionKeyword)
         {
@@ -97,17 +97,9 @@ namespace Wox.Plugin.Todoist
                                 configuration.SetLastFailedHttpCode(responseStatus);
                                 configuration.AddFailedRequest(task);
                                 UpdateSettingsControl();
+                                context.API.ChangeQuery(string.IsNullOrEmpty(actionKeyword) ? string.Empty : $"{actionKeyword} ", true);
                                 break;
                         }
-
-                        if (responseStatus!=HttpStatusCode.OK)
-                        {
-                            configuration.SetLastFailedHttpCode(responseStatus);
-                            configuration.SetLastFailedHttpCode(responseStatus);
-                            configuration.AddFailedRequest(task);
-                            UpdateSettingsControl();
-                        }
-
                     });
                    
                     return false;
@@ -130,7 +122,7 @@ namespace Wox.Plugin.Todoist
             };
         }
 
-        public Result getResultTasksFailed()
+        public Result getResultTasksFailed(Query query)
         {
             return new Result
             {
@@ -139,12 +131,14 @@ namespace Wox.Plugin.Todoist
                 IcoPath = "images\\icon.png",
                 Score = FAILED_TASK_RESULT_SCORE,
                 Action = _ =>
-                { ResendFailedTasks();
-                  return true;
+                { 
+                  ResendFailedTasks(query.RawQuery);
+                  return false;
                 }
             };
         }
-        public void ResendFailedTasks()
+
+        public void ResendFailedTasks(string fullQuery = "")
         {
             List<string> tasks = configuration.FailedRequests;
             string api_key = configuration.Api_key;
@@ -158,36 +152,31 @@ namespace Wox.Plugin.Todoist
                 {
                     HttpStatusCode responseStatus = taskRequest.Result;
                     if (responseStatus == HttpStatusCode.OK)
+                    {
                         configuration.RemoveFailedRequest(task);
+                        if (!string.IsNullOrEmpty(fullQuery)) // called from SettingsControl.xaml.cs
+                            context.API.ChangeQuery(fullQuery, true);
+                    }
                     else
+                    {
                         configuration.SetLastFailedHttpCode(responseStatus);
+                    }
 
                     UpdateSettingsControl();
 
                 });
-
-
             }
-          
-
         }
 
 
         public void UpdateSettingsControl()
         {
-
-         
              if (settingsControl!=null && controlDispatcher!= null)
              {
-                
                 controlDispatcher.BeginInvoke(
                 new ThreadStart(() => { settingsControl.ConfigureFailedTasks(); }));
-
             }
-             
-              
         }
-
     }
- 
 }
+
