@@ -1,4 +1,4 @@
-﻿using Flow.Launcher.Plugin;
+using Flow.Launcher.Plugin;
 using System;
 using System.Collections;
 using System.Collections.Generic;
@@ -22,6 +22,7 @@ namespace Wox.Plugin.Todoist
         private static readonly int VALID_RESULT_SCORE = 1000000;
 
         private PluginInitContext context;
+        private Settings settings;
 
         public TodoistPlugin()
         {
@@ -41,6 +42,7 @@ namespace Wox.Plugin.Todoist
             configuration = new WoxSettingsStorage(path);
             
             this.context = context;
+            settings = context.API.LoadSettingJsonStorage<Settings>();
         }
 
         public List<Result> Query(Query query)
