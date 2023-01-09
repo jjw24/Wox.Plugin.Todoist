@@ -1,4 +1,4 @@
-using Flow.Launcher.Plugin;
+﻿using Flow.Launcher.Plugin;
 using System;
 using System.Collections;
 using System.Collections.Generic;
@@ -21,7 +21,8 @@ namespace Wox.Plugin.Todoist
         private static readonly int FAILED_TASK_RESULT_SCORE = 1;
         private static readonly int VALID_RESULT_SCORE = 1000000;
 
-        private PluginInitContext context;
+        internal PluginInitContext context;
+
         private Settings settings;
 
         public TodoistPlugin()
@@ -39,10 +40,12 @@ namespace Wox.Plugin.Todoist
         public void Init(PluginInitContext context)
         {
             var path = context.CurrentPluginMetadata.PluginDirectory;
-            configuration = new WoxSettingsStorage(path);
             
             this.context = context;
+
             settings = context.API.LoadSettingJsonStorage<Settings>();
+
+            configuration = new WoxSettingsStorage(settings);
         }
 
         public List<Result> Query(Query query)
@@ -53,10 +56,10 @@ namespace Wox.Plugin.Todoist
 
             if (api_key.Trim().Length != 0)
             {
-                results.Add(GetResultValid(api_key,task, query.ActionKeyword));
+                results.Add(GetResultValid(api_key,task, query));
 
                 if (configuration.FailedRequests.Count != 0)
-                    results.Add(getResultTasksFailed());
+                    results.Add(getResultTasksFailed(query));
 
                 return results;
             }
@@ -66,8 +69,7 @@ namespace Wox.Plugin.Todoist
             }
         }
 
-
-        public Result GetResultValid(string api_key, string task, string actionKeyword)
+        public Result GetResultValid(string api_key, string task, Query query)
         {
             return new Result
             {
@@ -90,7 +92,7 @@ namespace Wox.Plugin.Todoist
                         switch (responseStatus)
                         {
                             case HttpStatusCode.OK:
-                                context.API.ChangeQuery(string.IsNullOrEmpty(actionKeyword) ? string.Empty : $"{actionKeyword} ");
+                                context.API.ChangeQuery(string.IsNullOrEmpty(query.ActionKeyword) ? string.Empty : $"{query.ActionKeyword} ");
                                 context.API.ShowMsg("Success", $"Task {task} added", context.CurrentPluginMetadata.IcoPath);
                                 break;
                             
@@ -99,17 +101,9 @@ namespace Wox.Plugin.Todoist
                                 configuration.SetLastFailedHttpCode(responseStatus);
                                 configuration.AddFailedRequest(task);
                                 UpdateSettingsControl();
+                                context.API.ChangeQuery(string.IsNullOrEmpty(query.ActionKeyword) ? string.Empty : $"{query.ActionKeyword} ", true);
                                 break;
                         }
-
-                        if (responseStatus!=HttpStatusCode.OK)
-                        {
-                            configuration.SetLastFailedHttpCode(responseStatus);
-                            configuration.SetLastFailedHttpCode(responseStatus);
-                            configuration.AddFailedRequest(task);
-                            UpdateSettingsControl();
-                        }
-
                     });
                    
                     return false;
@@ -132,7 +126,7 @@ namespace Wox.Plugin.Todoist
             };
         }
 
-        public Result getResultTasksFailed()
+        public Result getResultTasksFailed(Query query)
         {
             return new Result
             {
@@ -141,12 +135,14 @@ namespace Wox.Plugin.Todoist
                 IcoPath = "images\\icon.png",
                 Score = FAILED_TASK_RESULT_SCORE,
                 Action = _ =>
-                { ResendFailedTasks();
-                  return true;
+                { 
+                  ResendFailedTasks(query.RawQuery);
+                  return false;
                 }
             };
         }
-        public void ResendFailedTasks()
+
+        public void ResendFailedTasks(string fullQuery = "")
         {
             List<string> tasks = configuration.FailedRequests;
             string api_key = configuration.Api_key;
@@ -160,36 +156,31 @@ namespace Wox.Plugin.Todoist
                 {
                     HttpStatusCode responseStatus = taskRequest.Result;
                     if (responseStatus == HttpStatusCode.OK)
+                    {
                         configuration.RemoveFailedRequest(task);
+                        if (!string.IsNullOrEmpty(fullQuery))
+                            context.API.ChangeQuery(fullQuery, true);
+                    }
                     else
+                    {
                         configuration.SetLastFailedHttpCode(responseStatus);
+                    }
 
                     UpdateSettingsControl();
 
                 });
-
-
             }
-          
-
         }
 
 
         public void UpdateSettingsControl()
         {
-
-         
              if (settingsControl!=null && controlDispatcher!= null)
              {
-                
                 controlDispatcher.BeginInvoke(
                 new ThreadStart(() => { settingsControl.ConfigureFailedTasks(); }));
-
             }
-             
-              
         }
-
     }
- 
 }
+
