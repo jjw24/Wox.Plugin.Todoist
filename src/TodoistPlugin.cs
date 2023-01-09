@@ -158,7 +158,7 @@ namespace Wox.Plugin.Todoist
                     if (responseStatus == HttpStatusCode.OK)
                     {
                         configuration.RemoveFailedRequest(task);
-                        if (!string.IsNullOrEmpty(fullQuery))
+                        if (!string.IsNullOrEmpty(fullQuery)) // called from SettingsControl.xaml.cs
                             context.API.ChangeQuery(fullQuery, true);
                     }
                     else
