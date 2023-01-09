@@ -1,5 +1,6 @@
 ﻿using Flow.Launcher.Plugin;
 using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.Net;
 using System.Threading;
@@ -20,7 +21,7 @@ namespace Wox.Plugin.Todoist
         private static readonly int FAILED_TASK_RESULT_SCORE = 1;
         private static readonly int VALID_RESULT_SCORE = 1000000;
 
-       
+        private PluginInitContext context;
 
         public TodoistPlugin()
         {
@@ -38,49 +39,67 @@ namespace Wox.Plugin.Todoist
         {
             var path = context.CurrentPluginMetadata.PluginDirectory;
             configuration = new WoxSettingsStorage(path);
+            
+            this.context = context;
         }
 
         public List<Result> Query(Query query)
         {
             string task = query.Search;
-            string api_key = configuration.Api_key; 
+            string api_key = configuration.Api_key;
+            var results = new List<Result>();
 
             if (api_key.Trim().Length != 0)
             {
-                List<Result> results = new List<Result>
-                {
-                    GetResultValid(api_key,task)
-                     
-            };
+                results.Add(GetResultValid(api_key,task, query.ActionKeyword));
+
                 if (configuration.FailedRequests.Count != 0)
                     results.Add(getResultTasksFailed());
 
                 return results;
-            }   
+            }
             else
-                return new List<Result>
-                {
-                    getResultMissingAPI()         
-                };
+            {
+                return new List<Result> { getResultMissingAPI() };
+            }
         }
 
 
-        public Result GetResultValid(string api_key, string task)
+        public Result GetResultValid(string api_key, string task, string actionKeyword)
         {
             return new Result
             {
 
-                Title = $"Add the task: '{task}'.",
+                Title = $"Add task: '{task}'.",
                 IcoPath = "images\\icon.png",
                 Score = VALID_RESULT_SCORE,
                 Action = _ =>
                 {
+                    if (string.IsNullOrEmpty(task))
+                        return false;
+
                     var request = client.CreateQuickTask(api_key, task);
 
                     request.ContinueWith((taskRequest) =>
                     {
 
                         HttpStatusCode responseStatus = taskRequest.Result;
+
+                        switch (responseStatus)
+                        {
+                            case HttpStatusCode.OK:
+                                context.API.ChangeQuery(string.IsNullOrEmpty(actionKeyword) ? string.Empty : $"{actionKeyword} ");
+                                context.API.ShowMsg("Success", $"Task {task} added", context.CurrentPluginMetadata.IcoPath);
+                                break;
+                            
+                            default:
+                                configuration.SetLastFailedHttpCode(responseStatus);
+                                configuration.SetLastFailedHttpCode(responseStatus);
+                                configuration.AddFailedRequest(task);
+                                UpdateSettingsControl();
+                                break;
+                        }
+
                         if (responseStatus!=HttpStatusCode.OK)
                         {
                             configuration.SetLastFailedHttpCode(responseStatus);
@@ -91,7 +110,7 @@ namespace Wox.Plugin.Todoist
 
                     });
                    
-                    return true;
+                    return false;
                 },
                
             };
