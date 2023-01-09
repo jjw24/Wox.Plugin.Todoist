@@ -4,7 +4,7 @@ on:
   workflow_dispatch:
   push:
     branches: [ master ]
-    paths-ignore: 
+    paths-ignore:
       - .github/workflows/*
 
 jobs:
@@ -15,17 +15,17 @@ jobs:
       - name: Setup .NET
         uses: actions/setup-dotnet@v1
         with:
-          dotnet-version: 3.1.301
+          dotnet-version: 6.0.x
       - name: get version
         id: version
         uses: notiz-dev/github-action-json-property@release
-        with: 
+        with:
           path: 'src/plugin.json'
           prop_path: 'Version'
-      - run: echo ${{steps.version.outputs.prop}} 
+      - run: echo ${{steps.version.outputs.prop}}
       - name: Build
         run: |
-          dotnet publish 'src/Wox.Plugin.Todoist.csproj' --framework netcoreapp3.1  -c Release -o "Todoist"
+          dotnet publish 'src/Wox.Plugin.Todoist.csproj' --framework net6.0-windows  -c Release -o "Todoist"
           7z a -tzip "Wox.Plugin.Todoist.zip" "Todoist/*"
           rm -r "Todoist"
       - name: Publish
