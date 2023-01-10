@@ -17,10 +17,7 @@ namespace Wox.Plugin.Todoist
             FailedRequests = new List<string>();
             LastFailedStatusCode = HttpStatusCode.OK;
         }
+
         public string api_key { get; set; }
-
-     
-
-
     }
 }

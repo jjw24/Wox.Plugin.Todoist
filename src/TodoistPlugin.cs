@@ -1,5 +1,9 @@
 ﻿using Flow.Launcher.Plugin;
+using Flow.Launcher.Plugin.SharedCommands;
+using Newtonsoft.Json;
+using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Net;
 using System.Threading;
 using System.Windows.Controls;
@@ -42,6 +46,25 @@ namespace Wox.Plugin.Todoist
             settings = context.API.LoadSettingJsonStorage<Settings>();
 
             configuration = new WoxSettingsStorage(settings);
+
+            // TODO: Remove. Backwards compatibility at version 3.0.1
+            var full_path = Path.Combine(context.CurrentPluginMetadata.PluginDirectory, "todoist-settings.json");
+
+            if (full_path.FileExists())
+            {
+                try
+                {
+                    string json = File.ReadAllText(full_path);
+                    var oldSettings = JsonConvert.DeserializeObject<Settings>(json);
+
+                    settings.api_key = oldSettings.api_key;
+                    settings.FailedRequests = oldSettings.FailedRequests;
+                    settings.LastFailedStatusCode = oldSettings.LastFailedStatusCode;
+
+                    File.Delete(full_path);
+                }
+                catch (Exception) { }
+            }
         }
 
         public List<Result> Query(Query query)
