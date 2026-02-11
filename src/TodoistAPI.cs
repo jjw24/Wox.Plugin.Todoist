@@ -24,7 +24,7 @@ namespace Wox.Plugin.Todoist
                             };
             var content = new FormUrlEncodedContent(values);
             client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", api_key);
-            var request = client.PostAsync("https://api.todoist.com/sync/v9/quick/add", content);
+            var request = client.PostAsync("https://api.todoist.com/api/v1/tasks/quick", content);
             return request.ContinueWith((taskRequest) =>
             {
                 try
